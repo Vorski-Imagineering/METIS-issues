@@ -1,0 +1,55 @@
+name: Notify Telegram on issue updates
+
+on:
+  issues:
+    types:
+      - opened
+      - closed
+      - reopened
+      - labeled
+      - unlabeled
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    environment: actions
+
+    steps:
+      - name: Build Telegram message
+        id: message
+        shell: bash
+        run: |
+          ACTION="${{ github.event.action }}"
+          REPO="${{ github.repository }}"
+          NUMBER="${{ github.event.issue.number }}"
+          TITLE="${{ github.event.issue.title }}"
+          URL="${{ github.event.issue.html_url }}"
+          ACTOR="${{ github.actor }}"
+
+          if [ "$ACTION" = "opened" ]; then
+            MESSAGE=$(printf "🆕 New issue in %s\n\n#%s: %s\nBy: %s\n%s" "$REPO" "$NUMBER" "$TITLE" "$ACTOR" "$URL")
+          elif [ "$ACTION" = "closed" ]; then
+            MESSAGE=$(printf "✅ Issue closed in %s\n\n#%s: %s\nBy: %s\n%s" "$REPO" "$NUMBER" "$TITLE" "$ACTOR" "$URL")
+          elif [ "$ACTION" = "reopened" ]; then
+            MESSAGE=$(printf "♻️ Issue reopened in %s\n\n#%s: %s\nBy: %s\n%s" "$REPO" "$NUMBER" "$TITLE" "$ACTOR" "$URL")
+          elif [ "$ACTION" = "labeled" ]; then
+            LABEL="${{ github.event.label.name }}"
+            MESSAGE=$(printf "🏷️ Label added in %s\n\n#%s: %s\nLabel: %s\nBy: %s\n%s" "$REPO" "$NUMBER" "$TITLE" "$LABEL" "$ACTOR" "$URL")
+          elif [ "$ACTION" = "unlabeled" ]; then
+            LABEL="${{ github.event.label.name }}"
+            MESSAGE=$(printf "🧹 Label removed in %s\n\n#%s: %s\nLabel: %s\nBy: %s\n%s" "$REPO" "$NUMBER" "$TITLE" "$LABEL" "$ACTOR" "$URL")
+          else
+            MESSAGE=$(printf "Issue updated in %s\n\n#%s: %s\nAction: %s\nBy: %s\n%s" "$REPO" "$NUMBER" "$TITLE" "$ACTION" "$ACTOR" "$URL")
+          fi
+
+          {
+            echo 'message<<EOF'
+            echo "$MESSAGE"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Send Telegram message
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode text="${{ steps.message.outputs.message }}"
