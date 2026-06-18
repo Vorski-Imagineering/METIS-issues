@@ -1,0 +1,84 @@
+# Contributing
+
+This repo is a collection of Claude Code automation tools. The goal is that a non-programmer
+can use them by typing a slash command, and that the team can add new tools collaboratively
+without the structure turning into a junk drawer.
+
+## Repo layout
+
+The guiding rule: **`.claude/` holds only what Claude Code loads. The repo root holds what humans read.**
+
+```
+.claude/
+  commands/      Slash commands — the executable workflows (/accept-one, /metis, ...)
+  skills/        Auto-loaded routers — let Claude pick the right command from plain English
+  settings.json  Permissions + hooks
+
+linkedin-automation/   LinkedIn module: README, scripts/, setup/ examples
+metis/                 METIS module: README (usage guide)
+METIS-api/             Canonical METIS API reference (PLAYBOOK.md + openapi.json)
+docs/                  Design docs, plans, specs
+
+README.md        Front door for users
+CLAUDE.md        Instructions Claude reads at session start
+CONTRIBUTING.md  This file
+```
+
+Never put human-facing docs, scripts, or assets under `.claude/` — they belong in a module
+folder at the root. `.claude/` is configuration only.
+
+## Commands vs. skills
+
+- **Command** (`.claude/commands/<name>.md`): runs when the user types `/<name>`. This is where
+  the actual step-by-step workflow lives.
+- **Skill** (`.claude/skills/<name>/SKILL.md`): loaded automatically every session. Claude reads
+  its `description` and invokes it when the user describes the task in plain language, then routes
+  to the right command. Skills are how casual users avoid memorizing command names.
+
+A module typically has **one skill** (the router) and **one or more commands** (the workflows).
+
+## Adding a new slash command
+
+1. Create `.claude/commands/<name>.md` with frontmatter:
+
+   ```markdown
+   ---
+   description: One line shown in the /command menu and to Claude. Be specific.
+   allowed-tools: Read, Bash  # least privilege — list only what the command needs
+   ---
+
+   What this command does, in one sentence.
+
+   ## Steps
+
+   ### 1. ...
+   ### 2. ...
+   ```
+
+2. If the command belongs to a module that has a skill, add a row to that skill's routing table
+   so plain-language requests reach it.
+
+3. Update the module README and the root README's command list.
+
+### Conventions
+
+- **Least-privilege tools.** Only list the `allowed-tools` the command actually uses.
+- **Debug mode is ON.** If a step fails or returns something unexpected, stop and report the exact
+  error — do not invent fallbacks or workarounds. (See `accept-one.md` for the pattern.)
+- **Browser steps** use the Claude in Chrome connector (`mcp__claude-in-chrome__*`) and prefer
+  `aria-label`/`role`/text over CSS classes (LinkedIn obfuscates class names).
+- **Keep one source of truth.** Reference shared docs (e.g. `METIS-api/PLAYBOOK.md`) instead of
+  copying their content into a command.
+
+## Adding a new module
+
+1. Make a top-level folder `<module>/` with a `README.md` (setup + usage).
+2. Add the commands under `.claude/commands/`.
+3. Add a skill at `.claude/skills/<module>/SKILL.md` that routes intent → commands.
+4. Link the module from the root `README.md`.
+
+## Testing a change
+
+- Open the repo in Claude Code and run the command end-to-end.
+- For skills, confirm a plain-language phrase (not the slash name) triggers the right command.
+- Commit on a branch and open a PR. Note any secrets or `.env` keys a reviewer needs to test.
