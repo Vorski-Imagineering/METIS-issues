@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push *)",
+      "Bash(git credential *)",
+      "Bash(git config *)",
+      "Bash(git init:*)",
+      "Bash(git remote:*)",
+      "Bash(git pull:*)",
+      "Bash(grep:*)",
+      "Bash(cp:*)",
+      "Bash(curl:*)",
+      "Skill(accept-many)",
+      "Skill(accept-one)",
+      "Skill(search-to-sheet)"
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+config.json
+texts/
+messaged-log.txt
+output/
+.env
+.DS_Store
