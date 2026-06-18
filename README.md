@@ -2,7 +2,7 @@
 
 A public collection of automation tools and workflows built around the METIS ecosystem.
 
-## Getting Started
+## Getting Started in claude code
 
 1. Create a new folder and open it in your terminal
 2. Start Claude Code inside that folder
