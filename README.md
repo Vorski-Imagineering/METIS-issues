@@ -6,7 +6,7 @@ A public collection of automation tools and workflows built around the METIS eco
 
 1. Create a new folder and open it in your terminal
 2. Start Claude Code inside that folder
-3. Tell Claude: **"check out https://github.com/Vorski-Imagineering/METIS-pub"**
+3. Tell Claude: **"clone to this folder the repo https://github.com/Vorski-Imagineering/METIS-pub"**
 4. Once it's done, exit Claude and re-open it — make sure you are now inside the checked-out folder
 5. Run `/metis-setup` — it will ask for your email, password, and API key; enter them
 6. You're ready — use `/metis` to access METIS
