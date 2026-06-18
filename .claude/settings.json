@@ -14,5 +14,17 @@
       "Skill(accept-one)",
       "Skill(search-to-sheet)"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git status --porcelain 2>/dev/null | grep -q . && printf '{\"systemMessage\":\"You have uncommitted changes — consider committing before closing.\"}' || true"
+          }
+        ]
+      }
+    ]
   }
 }
