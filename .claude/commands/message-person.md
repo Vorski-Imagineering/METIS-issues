@@ -35,21 +35,21 @@ Navigate to `profile_url` and wait for the page to load.
 Use `javascript_tool` to read the name from the profile heading before clicking anything:
 
 ```javascript
-const h1 = document.querySelector('h1');
-h1 ? h1.textContent.trim() : 'unknown';
+const el = document.querySelector('h1, h2.text-heading-xlarge, .text-heading-xlarge');
+el ? el.textContent.trim() : 'unknown';
 ```
 
 Store this as `person_name` for the confirmation message.
 
 ### 5. Click the Message button
 
-Use `javascript_tool` to poll up to 10 seconds for a button whose visible text is exactly "Message", then click it:
+LinkedIn's Message action is an `<a>` tag, not a `<button>`. Use `javascript_tool` to poll up to 10 seconds for an `<a>` or `<button>` whose visible text is exactly "Message", then click it:
 
 ```javascript
 new Promise((resolve, reject) => {
   let elapsed = 0;
   const check = () => {
-    const btn = Array.from(document.querySelectorAll('button'))
+    const btn = Array.from(document.querySelectorAll('a, button'))
       .find(el => el.textContent.trim() === 'Message');
     if (btn) { btn.click(); return resolve('clicked'); }
     elapsed += 300;
@@ -64,15 +64,14 @@ If this returns anything other than `'clicked'`, **stop and report the error.**
 
 ### 6. Wait for the compose editor
 
-Use `javascript_tool` to poll up to 10 seconds for the messaging compose editor:
+LinkedIn renders the messaging panel inside a **shadow DOM** on `#interop-outlet`. Poll up to 10 seconds for the editor inside that shadow root:
 
 ```javascript
 new Promise((resolve, reject) => {
   let elapsed = 0;
   const check = () => {
-    const el = document.querySelector(
-      '.msg-form__contenteditable, [contenteditable="true"][role="textbox"], textarea[name="message"]'
-    );
+    const shadow = document.getElementById('interop-outlet')?.shadowRoot;
+    const el = shadow?.querySelector('[contenteditable="true"][role="textbox"]');
     if (el) return resolve('editor ready');
     elapsed += 300;
     if (elapsed >= 10000) return reject('editor not found after 10s');
@@ -86,12 +85,11 @@ If this returns anything other than `'editor ready'`, **stop and report the erro
 
 ### 7. Type the message
 
-Use `javascript_tool` to focus the editor and insert the message text. Replace `MESSAGE_TEXT_HERE` with the actual `message_text` value, properly escaped as a JS string literal:
+Use `javascript_tool` to focus the shadow DOM editor and insert the message text. Replace `MESSAGE_TEXT_HERE` with the actual `message_text` value, properly escaped as a JS string literal:
 
 ```javascript
-const el = document.querySelector(
-  '.msg-form__contenteditable, [contenteditable="true"][role="textbox"], textarea[name="message"]'
-);
+const shadow = document.getElementById('interop-outlet').shadowRoot;
+const el = shadow.querySelector('[contenteditable="true"][role="textbox"]');
 el.focus();
 document.execCommand('insertText', false, MESSAGE_TEXT_HERE);
 'typed';
@@ -101,13 +99,15 @@ If this returns anything other than `'typed'`, **stop and report the error.**
 
 ### 8. Click Send
 
-Use `javascript_tool` to poll up to 5 seconds for the Send button to be enabled, then click it:
+The Send button is also inside the shadow root. Poll up to 5 seconds for it to be enabled, then click it:
 
 ```javascript
 new Promise((resolve, reject) => {
   let elapsed = 0;
   const check = () => {
-    const btn = document.querySelector('button.msg-form__send-button');
+    const shadow = document.getElementById('interop-outlet').shadowRoot;
+    const btn = shadow?.querySelector('button[type="submit"]') ||
+      Array.from(shadow?.querySelectorAll('button') || []).find(b => b.textContent.trim() === 'Send');
     if (btn && !btn.disabled) { btn.click(); return resolve('sent'); }
     elapsed += 300;
     if (elapsed >= 5000) return reject('send button not found or disabled after 5s');
