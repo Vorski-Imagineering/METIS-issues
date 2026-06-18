@@ -120,7 +120,8 @@ Key behavioural notes not obvious from the schema:
 - `/responsible` `type` param uses `person` for Membership items and holon-type names for HolonRelationship items
 - `/responsible` `when` omitted = no date filter (includes undated); when set, undated items are excluded
 - `kind=person` items in `/responsible` carry `person`+`holon`; `kind=holon` items carry `from_holon`+`to_holon`
-- `POST /relationships/{id}/update` — the one write endpoint: requires `note` (non-empty); `step_slug` and `advance_step` are mutually exclusive
+- The `id` field on a `/responsible` item means different things by kind: for `kind=person` it is the `membership_id`; for `kind=holon` it is the `relationship_id`
+- `POST /relationships/{id}/update` — the **one write endpoint**, but it **only works for `kind=holon` items** (holon-to-holon relationships). Pass the `relationship_id` from the `/responsible` response. Do NOT attempt to use this endpoint with the `id` of a `kind=person` item — it will return `404`. There is currently no API endpoint for adding notes to person memberships.
 
 ---
 

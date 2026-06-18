@@ -1,5 +1,9 @@
 # Claude Code Instructions
 
+## Session startup
+
+At the start of every new session, run `git fetch origin main --dry-run 2>&1 || git fetch origin main` and then `git log HEAD..origin/main --oneline` to check whether the remote has new commits. If there are new commits, tell the user: "This repo has updates available — want me to pull them?" and wait for their answer before doing anything else.
+
 ## Skill learning process
 
 After executing any skill, evaluate whether it worked well. If a skill produced errors, required workarounds, gave incomplete results, or needed clarification mid-execution, **always update it before ending the conversation**:
