@@ -1,107 +1,233 @@
 ---
-description: Extract LinkedIn people search results and save them to a CSV file
-allowed-tools: Read, Write, mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__javascript_tool, mcp__claude-in-chrome__read_page
+description: Extract LinkedIn people search results (one or more pages) and append them to a Google Sheet
+allowed-tools: Bash, Read, Write, mcp__claude-in-chrome__tabs_context_mcp, mcp__claude-in-chrome__tabs_create_mcp, mcp__claude-in-chrome__navigate, mcp__claude-in-chrome__javascript_tool, mcp__claude-in-chrome__read_page
 ---
 
-Extract the first page of LinkedIn people search results and save them to a CSV file.
+Extract LinkedIn people search results and append them to a Google Sheet, one page at a time.
 
-**Arguments:** `$ARGUMENTS` — a LinkedIn people search URL. If missing, stop and tell the user:
-`"Please provide a LinkedIn search URL: /search-to-sheet <linkedin-search-url>"`
+**Arguments:** `$ARGUMENTS`
+
+Expected format:
+```
+<linkedin-search-url> <google-sheets-url> [pages]
+```
+
+- `linkedin-search-url` — a LinkedIn people search URL (e.g. `https://www.linkedin.com/search/results/people/?keywords=...`)
+- `google-sheets-url` — a Google Sheets URL (e.g. `https://docs.google.com/spreadsheets/d/<ID>/edit...`)
+- `pages` — optional integer, number of pages to process (default: 1; max: as many as LinkedIn shows)
+
+If either URL is missing, stop and tell the user:
+```
+Usage: /search-to-sheet <linkedin-url> <google-sheets-url> [pages]
+Example: /search-to-sheet "https://www.linkedin.com/search/results/people/?keywords=regenerative+leadership" "https://docs.google.com/spreadsheets/d/1XQx4.../edit" 3
+```
 
 > **Debug mode is ON.** If any step fails or returns an unexpected result, stop immediately and report the exact error to the user. Do NOT try fallbacks, alternative approaches, or workarounds.
 
+---
+
+## Sheet format
+
+The command appends rows with four columns, writing a header if the sheet is empty:
+
+| A | B | C | D |
+|---|---|---|---|
+| url | name | tagline | bio |
+
+- **url** — canonical profile URL, no query string (e.g. `https://www.linkedin.com/in/janedoe/`)
+- **name** — display name as shown on LinkedIn
+- **tagline** — professional headline
+- **bio** — location + degree indicator + mutual connections (e.g. `Amsterdam, Netherlands • 2nd • Victor Vorski and 2 other mutual connections`)
+
+The sheet must be shared with the service account `metis-sheets-bot@metis-pub.iam.gserviceaccount.com` (Editor). If writes fail with a 403/PermissionError, that is why.
+
+---
+
 ## Steps
 
-### 1. Parse arguments
+### 0. Parse arguments
 
-Extract the LinkedIn search URL from `$ARGUMENTS`. If missing, stop and tell the user.
+Split `$ARGUMENTS` on whitespace:
+- First token → `linkedin_url`
+- Second token → `sheets_url`
+- Third token (optional) → `pages` (integer, default `1`)
 
-### 2. Get browser context
+Extract the spreadsheet ID from `sheets_url`: the path segment between `/d/` and `/edit` (or the next `/`).
 
-Use `tabs_context_mcp` to find available tabs. Use an existing tab or create a new one with `tabs_create_mcp`.
+### 1. Get browser context
 
-### 3. Navigate to the LinkedIn search URL
+Call `mcp__claude-in-chrome__tabs_context_mcp`. Use an existing LinkedIn tab if one is open, otherwise call `mcp__claude-in-chrome__tabs_create_mcp`.
 
-Navigate to the LinkedIn search URL and wait for the page to load.
+### 2. Add header row if sheet is empty
 
-### 4. Extract search result cards
+Read the first row of the sheet:
 
-LinkedIn uses obfuscated CSS class names, so find cards by locating action buttons (Connect / Follow / Message / Pending) and walking up the DOM. Use `javascript_tool` to poll until cards appear (up to 10 seconds), then extract all visible people:
-
-```javascript
-new Promise((resolve, reject) => {
-  let elapsed = 0;
-  const check = () => {
-    const actionBtns = Array.from(document.querySelectorAll('button')).filter(b =>
-      ['Connect', 'Follow', 'Message', 'Pending'].includes(b.innerText.trim())
-    );
-    if (actionBtns.length > 0) {
-      const results = actionBtns.map(btn => {
-        // Walk up to card container (has a profile /in/ link)
-        let card = btn;
-        for (let j = 0; j < 10; j++) {
-          card = card.parentElement;
-          if (card.querySelector('a[href*="/in/"]')) break;
-        }
-
-        // Profile URL: use the second /in/ link (first is avatar-only)
-        const profLinks = Array.from(card.querySelectorAll('a[href*="/in/"]'));
-        const nameLink = profLinks.length > 1 ? profLinks[1] : profLinks[0];
-        const profileUrl = nameLink ? nameLink.href.split('?')[0] : '';
-
-        // Parse card text line by line
-        const lines = (card.innerText || '').split('\n').map(l => l.trim()).filter(l => l);
-
-        const name = (lines[0] || '').replace(/\s*•.*$/, '').trim();
-        const degreeRaw = lines.find(l => /•/.test(l));
-        const degree = degreeRaw ? degreeRaw.replace(/^[^•]*•/, '').trim() : '';
-        const followers = lines.find(l => /followers/i.test(l)) || '';
-        const mutualConnections = lines.find(l => /mutual connection/i.test(l)) || '';
-        const currentJobLine = lines.find(l => /^Current:/i.test(l));
-        const currentJob = currentJobLine ? currentJobLine.replace(/^Current:\s*/i, '') : '';
-
-        // Headline and location: lines between degree and action button
-        const actionText = btn.innerText.trim();
-        const degreeIdx = lines.findIndex(l => /•/.test(l));
-        const actionIdx = lines.indexOf(actionText);
-        const startIdx = degreeIdx >= 0 ? degreeIdx + 1 : 1;
-        const endIdx = actionIdx >= 0 ? actionIdx : lines.length;
-        const middleLines = lines.slice(startIdx, endIdx).filter(l =>
-          !/^Current:/i.test(l) && !/followers/i.test(l) && !/mutual connection/i.test(l)
-        );
-        const headline = middleLines[0] || '';
-        const location = middleLines[1] || '';
-
-        return { name, degree, headline, location, currentJob, followers, mutualConnections, profileUrl };
-      }).filter(r => r.name && r.profileUrl);
-      return resolve(JSON.stringify(results));
-    }
-    elapsed += 500;
-    if (elapsed >= 10000) return reject('no search result cards found after 10s');
-    setTimeout(check, 500);
-  };
-  check();
-}).catch(e => e);
+```bash
+PY=google-sheets/.venv/bin/python
+$PY google-sheets/sheets_cli.py \
+  --spreadsheet-id "<SPREADSHEET_ID>" \
+  --worksheet "Sheet1" \
+  read --range "A1:D1"
 ```
 
-If this fails, use `read_page` to inspect the DOM, adapt the selectors once, then stop if still failing.
+If the result is empty (no rows returned), write the header:
 
-Report: `Found {N} results: {name1}, {name2}, ...`
+```bash
+$PY google-sheets/sheets_cli.py \
+  --spreadsheet-id "<SPREADSHEET_ID>" \
+  --worksheet "Sheet1" \
+  append --row '["url","name","tagline","bio"]'
+```
 
-### 5. Write CSV file
+### 3. For each page (repeat `pages` times)
 
-Use the `Write` tool to write the results to `/Users/vvorski/dev/auto-li/output/search-results.csv`.
+#### 3a. Navigate to the page
 
-- If the file does not exist, write a header row first: `Name,Degree,Headline,Location,Current Job,Followers,Mutual Connections,Profile URL`
-- If the file already exists, use `Read` to get the existing content and append the new rows.
-- Properly escape CSV fields: wrap any field containing commas, quotes, or newlines in double quotes, and double any internal quotes.
+For **page 1**, navigate to `linkedin_url`.
 
-### 6. Final summary
+For **page N > 1**, construct the page URL. LinkedIn search uses a `start` parameter:
+- `start=0` → page 1 (or omit it)
+- `start=10` → page 2
+- `start=20` → page 3
+- Pattern: `start = (pageNumber - 1) * 10`
 
-Report: `Done — wrote {N} rows to output/search-results.csv. Columns: Name | Degree | Headline | Location | Current Job | Followers | Mutual Connections | Profile URL.`
+Append `&start=<N>` to the base URL, or replace an existing `start=` parameter.
 
-## Notes
+After navigating, wait 3 seconds for the page to load before extracting.
 
-- Only the first visible page of results is captured (~10 results). This command does not paginate.
-- Cards are found by action buttons (Connect/Follow/Message/Pending) since LinkedIn obfuscates CSS class names.
-- Running the command multiple times appends additional rows to the same CSV file.
+> **Important:** LinkedIn's page title or URL does not always confirm the page number. Trust your own URL construction.
+
+#### 3b. Count results on the page
+
+Use `javascript_tool` to count how many profile links with degree markers are visible:
+
+```javascript
+Array.from(document.querySelectorAll('a[href*="/in/"]'))
+  .filter(a => /[•·]\s*\d(?:st|nd|rd|th)/.test(a.innerText)).length;
+```
+
+If `0`, wait 2 more seconds and retry once. If still `0`, stop and report: "No results found on page N — the search may have run out of results or the page did not load correctly."
+
+#### 3c. Extract results in batches of 5
+
+LinkedIn result cards are identified by `<a href="/in/...">` links that contain a degree marker (• 2nd, • 3rd) in their innerText. **Do not use action buttons (Connect/Follow/Message) as anchors** — LinkedIn does not render them for every card.
+
+Use this extraction function, calling it once per result by index. Call 5 at a time (indices 0–4, then 5–9) to avoid tool output truncation:
+
+```javascript
+// Define the function first
+const fn = i => {
+  const link = Array.from(document.querySelectorAll('a[href*="/in/"]'))
+    .filter(a => /[•·]\s*\d(?:st|nd|rd|th)/.test(a.innerText))[i];
+  if (!link) return '(none)';
+
+  const profileUrl = link.href.split('?')[0];
+  const name = (link.innerText.split('\n')[0] || '').replace(/\s*[•·].*$/, '').trim();
+  const degree = ((link.innerText.match(/[•·]\s*(\d(?:st|nd|rd|th))/) || [])[1]) || '';
+
+  // Walk up the DOM (up to 12 levels) to find the card container
+  let card = link;
+  for (let j = 0; j < 12; j++) {
+    card = card.parentElement;
+    if (!card) break;
+    if (card.innerText.includes('mutual') || card.innerText.includes('Connect')) break;
+  }
+
+  const cl = (card ? card.innerText : '').split('\n').map(l => l.trim()).filter(l => l);
+
+  // Patterns to skip: action buttons, section labels, follower counts
+  const skip = /^(Connect|Follow|Message|Pending|Summary:|Current:|mutual|\d+\s*(follower|connection))/i;
+  // Location pattern — add cities/countries as needed for your target region
+  const loc = /Portugal|Spain|France|Netherlands|Germany|United Kingdom|Belgium|Ireland|Italy|Switzerland|Sweden|Denmark|Austria|Norway|Czech|Poland|London|Lisbon|Amsterdam|Berlin|Paris|Madrid|Barcelona|Porto|Area/i;
+
+  const ni = cl.findIndex(l => l.startsWith(name));
+  const h = cl.slice(ni + 1).find(l => !skip.test(l) && !loc.test(l) && !/[•·]/.test(l) && l.length > 5) || '';
+  const lc = cl.find(l => loc.test(l) && l.length < 60 && !l.includes('linkedin')) || '';
+  const mu = cl.find(l => /mutual/i.test(l)) || '';
+
+  return [profileUrl, name, h, lc + (degree ? ' • ' + degree : '') + (mu ? ' • ' + mu : '')].join('|');
+};
+```
+
+Then call for each index individually (not in a loop — the loop won't survive between tool calls):
+
+```javascript
+// Batch 1: indices 0-4
+[fn(0), fn(1), fn(2), fn(3), fn(4)].join('\n');
+```
+
+```javascript
+// Batch 2: indices 5-9
+[fn(5), fn(6), fn(7), fn(8), fn(9)].join('\n');
+```
+
+Parse each returned line by splitting on `|`:
+- Field 0 → url
+- Field 1 → name  
+- Field 2 → tagline
+- Field 3 → bio
+
+Skip any line that is `(none)` — it means the index is past the end of results.
+
+If any individual result has an unexpectedly long headline that may cause truncation (the tool output approaches 2000 chars), call it individually: `fn(i)` alone.
+
+#### 3d. Write the page's results to the sheet immediately
+
+**Do not accumulate results across pages.** Write after each page before navigating away — the browser window object resets on navigation and any stored state is lost.
+
+Use the Python gspread library directly (faster than `sheets_cli.py` for multi-row appends):
+
+```bash
+google-sheets/.venv/bin/python3 - << 'PYEOF'
+import os, base64, json, warnings
+warnings.filterwarnings('ignore')
+from dotenv import load_dotenv
+load_dotenv(dotenv_path='.env')
+import gspread
+from google.oauth2.service_account import Credentials
+
+b64 = os.environ['GOOGLE_SERVICE_ACCOUNT_B64']
+key = json.loads(base64.b64decode(b64))
+creds = Credentials.from_service_account_info(key, scopes=[
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive'
+])
+gc = gspread.authorize(creds)
+ws = gc.open_by_key('<SPREADSHEET_ID>').get_worksheet_by_id(0)
+
+rows = [
+  # One list per result: [url, name, tagline, bio]
+  ["https://www.linkedin.com/in/example/", "Jane Doe", "Regenerative leadership coach", "Amsterdam • 2nd • 3 mutual connections"],
+  # ... add all extracted rows here
+]
+
+ws.append_rows(rows, value_input_option='RAW')
+total = len(ws.get_all_values())
+print(f"Wrote {len(rows)} rows. Sheet now has {total} rows (including header).")
+PYEOF
+```
+
+Replace `<SPREADSHEET_ID>` with the actual ID and fill in `rows` with the extracted data. Use `get_worksheet_by_id(0)` to target the first tab (works regardless of tab name).
+
+#### 3e. Report progress
+
+After each page: `Page {N}: extracted {count} results, wrote to sheet.`
+
+### 4. Final summary
+
+```
+Done — processed {N} pages, wrote {total_rows} results.
+Sheet: <sheets_url>
+Columns: url | name | tagline | bio
+```
+
+---
+
+## Known limitations and caveats
+
+- **Location regex is Europe-focused.** If your search targets other regions, you'll need to add city/country names to the `loc` pattern in step 3c, or the location field will be blank.
+- **Some profiles have no visible headline.** LinkedIn doesn't always render a headline for every card. Those entries will have an empty `tagline` — this is expected.
+- **Tool output truncation.** `javascript_tool` output is capped around 2000 characters. Calling 5 results at a time avoids this, but a single very long headline can still truncate. If that happens, call the affected index alone (`fn(i)` by itself).
+- **LinkedIn rate limiting.** If pages start returning 0 results mid-run, LinkedIn may be throttling. Stop, wait a few minutes, then resume from where you left off by using the `start=` parameter directly.
+- **Page 10+ may not exist.** LinkedIn caps most people searches at ~100 results (10 pages). If a page returns 0 results and you haven't reached that cap, the search is exhausted.
+- **`await` / `setTimeout` in `javascript_tool`.** Promises with `setTimeout` inside `javascript_tool` do not await correctly. All extraction is synchronous. Do not use `await new Promise(r => setTimeout(r, N))` — it returns immediately.

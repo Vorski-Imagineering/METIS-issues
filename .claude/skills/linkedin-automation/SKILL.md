@@ -2,11 +2,14 @@
 name: linkedin-automation
 description: >
   LinkedIn automation workflows for accepting connection invitations, messaging connections,
-  listing pending invites, and extracting people search results to CSV. Use this skill
-  whenever the user wants to do anything with LinkedIn — accepting invites, bulk accepting,
-  messaging connections, checking pending invitations, or scraping search results to a spreadsheet.
+  listing pending invites, extracting people search results to a Google Sheet, and sending
+  connection requests from a Google Sheet. Use this skill whenever the user wants to do
+  anything with LinkedIn — accepting invites, bulk accepting, messaging connections, checking
+  pending invitations, scraping search results to a spreadsheet, or sending outreach connection
+  requests from a spreadsheet.
   Trigger on phrases like: "accept LinkedIn invites", "message my connections", "check my pending invitations",
-  "how many invites do I have", "save LinkedIn search results", "bulk accept", or any request involving
+  "how many invites do I have", "save LinkedIn search results", "bulk accept", "send connection requests
+  from my sheet", "connect with people in the spreadsheet", or any request involving
   LinkedIn connection management or outreach automation.
 ---
 
@@ -17,11 +20,10 @@ All workflows require the Chrome extension to be active with a LinkedIn session 
 
 ## Workspace paths
 
-All file operations use paths relative to the user's workspace folder (the folder selected in Cowork). Resolve the actual mounted path for that folder at the start of each session — do not hardcode session-specific paths.
+All file operations use paths relative to the user's workspace folder. Resolve the actual mounted path for that folder at the start of each session — do not hardcode session-specific paths.
 
 - **Message template**: `{workspace}/texts/accept-invite.txt`
 - **Messaged log**: `{workspace}/messaged-log.txt`
-- **CSV output**: `{workspace}/output/search-results.csv`
 
 ## Workflow routing
 
@@ -33,8 +35,9 @@ Read the user's message and pick the right workflow:
 | "Accept one invitation" | `{workspace}/.claude/commands/accept-one.md` |
 | "Accept N invitations" / "bulk accept" | `{workspace}/.claude/commands/accept-many.md` |
 | "Message N connections" | `{workspace}/.claude/commands/message-connections.md` |
-| "Search LinkedIn / save search results" | `{workspace}/.claude/commands/search-to-sheet.md` |
+| "Search LinkedIn / extract search results to a Google Sheet" | `{workspace}/.claude/commands/search-to-sheet.md` |
 | "Find a person's LinkedIn URL by name" / "fill empty LinkedIn column" | `{workspace}/.claude/commands/linkedin-find-person.md` |
+| "Send connection requests from a spreadsheet / sheet" | `{workspace}/.claude/commands/connect-from-sheet.md` |
 
 Read the appropriate command file before starting work.
 
