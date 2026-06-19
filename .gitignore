@@ -4,3 +4,7 @@ messaged-log.txt
 output/
 .env
 .DS_Store
+.venv/
+# Never commit Google service-account keys
+service_account.json
+*service_account*.json

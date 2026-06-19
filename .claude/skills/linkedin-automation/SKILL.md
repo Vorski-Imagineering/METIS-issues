@@ -34,6 +34,7 @@ Read the user's message and pick the right workflow:
 | "Accept N invitations" / "bulk accept" | `{workspace}/.claude/commands/accept-many.md` |
 | "Message N connections" | `{workspace}/.claude/commands/message-connections.md` |
 | "Search LinkedIn / save search results" | `{workspace}/.claude/commands/search-to-sheet.md` |
+| "Find a person's LinkedIn URL by name" / "fill empty LinkedIn column" | `{workspace}/.claude/commands/linkedin-find-person.md` |
 
 Read the appropriate command file before starting work.
 
