@@ -177,7 +177,7 @@ Search holons. At least one of `q` or `type` must be provided.
 | Param | In | Required | Description |
 |---|---|---|---|
 | `q` | query | no | Case-insensitive name substring |
-| `type` | query | no | `organisation`, `domain`, `event`, or `camp` |
+| `type` | query | no | Holon class slug, currently seeded as `organisation`, `domain`, `event`, or `camp` |
 | `parent` | query | no | Filter by parent Holon PK (e.g. parent Event for camps) |
 | `limit` | query | no | Default 100, max 100 |
 | `offset` | query | no | Page offset — increment by `limit` until `has_more` is `false` |
@@ -195,6 +195,39 @@ Retrieve one holon by integer PK. Returns 404 if not found.
 ### `GET /api/v1/holons/by-slug/{slug}` — auth: tokenBearer
 
 Retrieve one holon by slug. Returns 404 if not found.
+
+---
+
+### `GET /api/v1/classes` — auth: tokenBearer
+
+Discover active object classes and API-safe capability config. Use `object_kind=holon`
+to list Holon classes. Existing Holon payloads still return the class slug as
+`type`; they do not embed class config.
+
+| Param | In | Required | Description |
+|---|---|---|---|
+| `object_kind` | query | no | Optional class scope, e.g. `holon` |
+
+**Response 200:** `[ObjectClassPublic]`
+
+```json
+{
+  "object_kind": "holon",
+  "slug": "event",
+  "label": "Event",
+  "plural_label": "Events",
+  "description": "",
+  "sort_order": 30,
+  "is_system": true,
+  "is_active": true,
+  "icon_url": null,
+  "config": {"css_class": "holon-type-event", "hasAdditionalFields": true}
+}
+```
+
+### `GET /api/v1/classes/{object_kind}/{slug}` — auth: tokenBearer
+
+Retrieve one active object class. Returns 404 if not found or inactive.
 
 ---
 
@@ -397,6 +430,9 @@ Private fields (`infos`, `config`, journey state) are excluded.
 `contact` is returned to authenticated read-token holders.
 
 **HolonPublic:** `id`, `name`, `slug`, `type`, `description`, `parent_id`, `logo_url`, `links`
+
+`type` is always the Holon's class slug string, not a nested class object. Valid
+slugs are database-backed and can be discovered through `/api/v1/classes?object_kind=holon`.
 
 `logo_url` is `null` when no logo is set.
 `links` is returned to authenticated read-token holders.

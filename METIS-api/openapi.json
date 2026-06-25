@@ -602,6 +602,71 @@
         "title": "NoteListResponse",
         "type": "object"
       },
+      "ObjectClassPublic": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "icon_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Url"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_system": {
+            "title": "Is System",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "object_kind": {
+            "title": "Object Kind",
+            "type": "string"
+          },
+          "plural_label": {
+            "title": "Plural Label",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "object_kind",
+          "slug",
+          "label",
+          "plural_label",
+          "description",
+          "sort_order",
+          "is_system",
+          "is_active",
+          "config"
+        ],
+        "title": "ObjectClassPublic",
+        "type": "object"
+      },
       "PersonPublic": {
         "properties": {
           "actor_kind": {
@@ -1089,6 +1154,154 @@
         ]
       }
     },
+    "/api/v1/classes": {
+      "get": {
+        "description": "Return database-backed class metadata and API-safe capability config. Existing Holon payloads continue to expose string class slugs as `type`.",
+        "operationId": "core_agentic_api_router_object_class_list",
+        "parameters": [
+          {
+            "description": "Optional object kind filter, e.g. holon.",
+            "in": "query",
+            "name": "object_kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional object kind filter, e.g. holon.",
+              "title": "Object Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ObjectClassPublic"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "List discoverable object classes",
+        "tags": [
+          "API"
+        ]
+      }
+    },
+    "/api/v1/classes/{object_kind}/{slug}": {
+      "get": {
+        "description": "Return one database-backed class row with API-safe capability config.",
+        "operationId": "core_agentic_api_router_object_class_detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "object_kind",
+            "required": true,
+            "schema": {
+              "title": "Object Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectClassPublic"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "security": [
+          {
+            "TokenAuth": []
+          }
+        ],
+        "summary": "Retrieve one discoverable object class",
+        "tags": [
+          "API"
+        ]
+      }
+    },
     "/api/v1/holons": {
       "get": {
         "operationId": "core_agentic_api_router_holons_search",
@@ -1106,12 +1319,12 @@
             }
           },
           {
-            "description": "Holon type: organisation, domain, event, camp",
+            "description": "Holon class slug, e.g. organisation, domain, event, camp",
             "in": "query",
             "name": "type",
             "required": false,
             "schema": {
-              "description": "Holon type: organisation, domain, event, camp",
+              "description": "Holon class slug, e.g. organisation, domain, event, camp",
               "title": "Type",
               "type": "string"
             }
