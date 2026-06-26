@@ -208,7 +208,7 @@ to list Holon classes. Existing Holon payloads still return the class slug as
 |---|---|---|---|
 | `object_kind` | query | no | Optional class scope, e.g. `holon` |
 
-**Response 200:** `[ObjectClassPublic]`
+**Response 200:** `[MetisClassPublic]`
 
 ```json
 {

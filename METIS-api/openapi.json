@@ -538,6 +538,71 @@
         "title": "MembershipUpdateResponse",
         "type": "object"
       },
+      "MetisClassPublic": {
+        "properties": {
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "icon_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Url"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_system": {
+            "title": "Is System",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "object_kind": {
+            "title": "Object Kind",
+            "type": "string"
+          },
+          "plural_label": {
+            "title": "Plural Label",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "object_kind",
+          "slug",
+          "label",
+          "plural_label",
+          "description",
+          "sort_order",
+          "is_system",
+          "is_active",
+          "config"
+        ],
+        "title": "MetisClassPublic",
+        "type": "object"
+      },
       "NoteItem": {
         "properties": {
           "author_person": {
@@ -600,71 +665,6 @@
           "items"
         ],
         "title": "NoteListResponse",
-        "type": "object"
-      },
-      "ObjectClassPublic": {
-        "properties": {
-          "config": {
-            "additionalProperties": true,
-            "title": "Config",
-            "type": "object"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "icon_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Icon Url"
-          },
-          "is_active": {
-            "title": "Is Active",
-            "type": "boolean"
-          },
-          "is_system": {
-            "title": "Is System",
-            "type": "boolean"
-          },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          },
-          "object_kind": {
-            "title": "Object Kind",
-            "type": "string"
-          },
-          "plural_label": {
-            "title": "Plural Label",
-            "type": "string"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          },
-          "sort_order": {
-            "title": "Sort Order",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "object_kind",
-          "slug",
-          "label",
-          "plural_label",
-          "description",
-          "sort_order",
-          "is_system",
-          "is_active",
-          "config"
-        ],
-        "title": "ObjectClassPublic",
         "type": "object"
       },
       "PersonPublic": {
@@ -1157,7 +1157,7 @@
     "/api/v1/classes": {
       "get": {
         "description": "Return database-backed class metadata and API-safe capability config. Existing Holon payloads continue to expose string class slugs as `type`.",
-        "operationId": "core_agentic_api_router_object_class_list",
+        "operationId": "core_agentic_api_router_metis_class_list",
         "parameters": [
           {
             "description": "Optional object kind filter, e.g. holon.",
@@ -1184,7 +1184,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/ObjectClassPublic"
+                    "$ref": "#/components/schemas/MetisClassPublic"
                   },
                   "title": "Response",
                   "type": "array"
@@ -1228,7 +1228,7 @@
     "/api/v1/classes/{object_kind}/{slug}": {
       "get": {
         "description": "Return one database-backed class row with API-safe capability config.",
-        "operationId": "core_agentic_api_router_object_class_detail",
+        "operationId": "core_agentic_api_router_metis_class_detail",
         "parameters": [
           {
             "in": "path",
@@ -1254,7 +1254,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ObjectClassPublic"
+                  "$ref": "#/components/schemas/MetisClassPublic"
                 }
               }
             },
